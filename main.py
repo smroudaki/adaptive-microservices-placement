@@ -1,14 +1,21 @@
 import argparse
 import os
+import random
 import ray
 import uuid
 import warnings
 from adaptive_microservices_placement_env import AdaptiveMicroservicesPlacementEnv
-from config import MICROSERVICE_NODES, NETWORK_NODES
+from config import (
+    MICROSERVICE_NODES_MIN,
+    MICROSERVICE_NODES_MAX,
+    NETWORK_NODES_MIN,
+    NETWORK_NODES_MAX,
+)
 from initial_placement import InitialPlacementManager
 from microservices.manager import MicroserviceManager
 from network_topology.manager import NetworkTopologyManager
 from initial_population import InitialPopulationManager
+from setup_manager import save_setup, load_setup
 from trainer import Trainer
 from logger_setup import logger
 
@@ -17,64 +24,76 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Load or create microservices and network topology graphs."
-    )
+    parser = argparse.ArgumentParser(description="Load setups.")
     parser.add_argument(
-        "--microservices-graph",
+        "--setup-path",
         type=str,
         default=None,
-        help="Path to the saved microservices graph (pickle file).",
-    )
-    parser.add_argument(
-        "--network-topology-graph",
-        type=str,
-        default=None,
-        help="Path to the saved network topology graph (pickle file).",
+        help="Path to the setup (pickle file).",
     )
     args = parser.parse_args()
 
-    microservice_manager = MicroserviceManager()
-    network_manager = NetworkTopologyManager()
+    if args.setup_path and os.path.exists(args.setup_path):
+        logger.info("Loading setup...")
+        (
+            microservice_manager,
+            network_manager,
+            groups,
+            initial_placement,
+            initial_population,
+        ) = load_setup(args.setup_path)
 
-    # Generate random_hash if needed (only if you want to use the default filename pattern)
-    if not args.microservices_graph or not args.network_topology_graph:
+        logger.info("Microservices groups: %s", groups)
+        logger.info("Initial microservices placement: %s", initial_placement)
+        logger.info("Population: %s", initial_population)
+
+        microservice_manager.visualize(groups)
+        network_manager.visualize()
+    else:
         random_hash = uuid.uuid4().hex[:6]
 
-    # Load the microservices graph if a path is provided, otherwise create new
-    if args.microservices_graph and os.path.exists(args.microservices_graph):
-        logger.info("Loading saved microservices graph...")
-        microservice_manager.load_graph(args.microservices_graph)
-    else:
         logger.info("Creating new microservices graph...")
-        logger.info("Total Microservices: %s", MICROSERVICE_NODES)
-        microservice_manager.create_gn_graph(MICROSERVICE_NODES)
-        microservice_manager.save_graph(random_hash=random_hash)
+        microsevices_nodes_num = random.randint(
+            MICROSERVICE_NODES_MIN, MICROSERVICE_NODES_MAX
+        )
+        microsevices_nodes_num = MICROSERVICE_NODES_MIN
+        logger.info("Total microservices graph nodes: %s", microsevices_nodes_num)
+        microservice_manager = MicroserviceManager()
+        microservice_manager.create_gn_graph(microsevices_nodes_num)
 
-    # Load the network topology graph if a path is provided, otherwise create new
-    if args.network_topology_graph and os.path.exists(args.network_topology_graph):
-        logger.info("Loading saved network topology graph...")
-        network_manager.load_graph(args.network_topology_graph)
-    else:
         logger.info("Creating new network topology graph...")
-        network_manager._initialize_network(NETWORK_NODES)
-        network_manager.save_graph(random_hash=random_hash)
+        network_nodes_num = random.randint(NETWORK_NODES_MIN, NETWORK_NODES_MAX)
+        network_nodes_num = NETWORK_NODES_MIN
+        logger.info("Total network topology graph nodes: %s", network_nodes_num)
+        network_manager = NetworkTopologyManager()
+        network_manager._initialize_network(network_nodes_num)
 
-    groups = microservice_manager.graph_partitioning()
-    logger.info("Groups: %s", groups)
+        groups = microservice_manager.graph_partitioning()
+        logger.info("Microservices groups: %s", groups)
 
-    placement_manager = InitialPlacementManager(microservice_manager, network_manager)
-    initial_placement = placement_manager.place_microservices(groups)
-    logger.info("Initial Placement Result: %s", initial_placement)
+        placement_manager = InitialPlacementManager(
+            microservice_manager, network_manager
+        )
+        initial_placement = placement_manager.place_microservices(groups)
+        logger.info("Initial microservices placement: %s", initial_placement)
 
-    population_manager = InitialPopulationManager(
-        microservice_manager, initial_placement
-    )
-    initial_population = population_manager.create_population()
-    logger.info("Population: %s", initial_population)
+        population_manager = InitialPopulationManager(
+            microservice_manager, initial_placement
+        )
+        initial_population = population_manager.create_population()
+        logger.info("Population: %s", initial_population)
 
-    microservice_manager.visualize(groups)
-    network_manager.visualize()
+        save_setup(
+            microservice_manager,
+            network_manager,
+            groups,
+            initial_placement,
+            initial_population,
+            random_hash,
+        )
+
+        microservice_manager.visualize(groups)
+        network_manager.visualize()
 
     ray.init()
     env_config = {
@@ -87,7 +106,7 @@ def main():
     trainer.setup()
     best_model_checkpoint = trainer.train()
 
-    logger.info("Best Model Checkpoint: %s", best_model_checkpoint)
+    logger.info("Best model checkpoint: %s", best_model_checkpoint)
 
 
 if __name__ == "__main__":

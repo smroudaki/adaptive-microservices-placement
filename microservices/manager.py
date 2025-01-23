@@ -1,11 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
-import os
-import pickle
 import random
 from collections import defaultdict
-from config import DATA_FOLDER
-from logger_setup import logger
 from microservices.type import MicroserviceNodeType
 
 
@@ -229,65 +225,3 @@ class MicroserviceManager:
 
         plt.title(f"{self.graph.graph['name']} - Group Visualization")
         plt.show()
-
-    def save_graph(self, random_hash=None, filename=None):
-        """
-        Save the graph and associated attributes to a pickle file with default path.
-
-        Args:
-            random_hash (str, optional): A random hash to include in the filename.
-            filename (str, optional): The filename to save the graph to. If not provided, a default path is used.
-        """
-        if filename is None:
-            # Set default base directory
-            base_dir = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), f"../{DATA_FOLDER}")
-            )
-
-            # Create directory if it doesn't exist
-            os.makedirs(base_dir, exist_ok=True)
-
-            # Set default filename
-            filename = (
-                f"{base_dir}/microservices_graph_{random_hash}.pkl"
-                if random_hash
-                else f"{base_dir}/microservices_graph.pkl"
-            )
-        else:
-            # Create directory if it doesn't exist
-            os.makedirs(os.path.dirname(filename), exist_ok=True)
-
-        # Save graph to file
-        with open(filename, "wb") as f:
-            data = {
-                "graph": self.graph,
-                "_graph_name": self._graph_name,
-                "_type_counters": self._type_counters,
-            }
-
-            pickle.dump(data, f)
-
-        logger.info(f"Microservices graph saved to {filename}.")
-
-    def load_graph(self, filename):
-        """
-        Load the graph and associated attributes from a pickle file.
-
-        Args:
-            filename (str): The filename to load the graph from.
-
-        Raises:
-            FileNotFoundError: If the file does not exist.
-        """
-        if not os.path.exists(filename):
-            raise FileNotFoundError(f"The file {filename} does not exist.")
-
-        # Load graph from file
-        with open(filename, "rb") as f:
-            data = pickle.load(f)
-
-            self.graph = data["graph"]
-            self._graph_name = data["_graph_name"]
-            self._type_counters = data["_type_counters"]
-
-        logger.info(f"Microservices graph loaded from {filename}.")

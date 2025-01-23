@@ -1,5 +1,9 @@
-from yafs.distribution import deterministicDistributionStartPoint
+from config import (
+    NUMBER_OF_REQUESTS_MIN,
+    REQUESTS_INTERVAL_MAX,
+)
 from microservices.type import MicroserviceNodeType
+from yafs.distribution import deterministicDistributionStartPoint
 
 
 class InitialPopulationManager:
@@ -26,11 +30,6 @@ class InitialPopulationManager:
         app_name = self.microservice_manager.graph.name
         population[app_name] = {"sources": [], "sinks": []}
 
-        # Constants for source configuration
-        start_time = 0  # Start time for the source messages
-        message_interval = 5000  # Interval between messages
-        number_of_requests = 1  # Number of requests to be sent
-
         # Process SOURCE microservices
         for ms_id, allocated_node in self.placement[MicroserviceNodeType.SOURCE.value]:
             # Iterate over all target nodes connected to this SOURCE
@@ -49,11 +48,11 @@ class InitialPopulationManager:
                         (
                             message_name,
                             allocated_node,
-                            number_of_requests,
+                            NUMBER_OF_REQUESTS_MIN,
                             deterministicDistributionStartPoint(
                                 name="Deterministic",
-                                start=start_time,
-                                time=message_interval,
+                                start=0,
+                                time=REQUESTS_INTERVAL_MAX,
                             ),
                         )
                     )

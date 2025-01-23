@@ -1,11 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
-import os
-import pickle
 import random
 from collections import defaultdict
-from config import DATA_FOLDER
-from logger_setup import logger
 from network_topology.edge import NetworkEdge
 from network_topology.node import NetworkNode
 from network_topology.type import NetworkNodeType
@@ -20,9 +16,9 @@ class NetworkTopologyManager:
         self.type_counters = defaultdict(int)
 
     def _initialize_network(self, total_nodes):
-        num_edge_nodes = int(total_nodes * 0.5)
-        num_fog_nodes = int(total_nodes * 0.3)
-        num_cloud_nodes = total_nodes - num_edge_nodes - num_fog_nodes
+        num_edge_nodes = int(total_nodes * 0.4)
+        num_fog_nodes = int(total_nodes * 0.4)
+        num_cloud_nodes = int(total_nodes * 0.2)
 
         edge_nodes = self._create_nodes(
             NetworkNodeType.EDGE.value,
@@ -221,46 +217,3 @@ class NetworkTopologyManager:
             NetworkNodeType.FOG.value: "orange",
             NetworkNodeType.CLOUD.value: "lightgreen",
         }.get(type, "gray")
-
-    def save_graph(self, random_hash=None, filename=None):
-        """Save the network topology graph to a pickle file with default path."""
-        if filename is None:
-            base_dir = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), f"../{DATA_FOLDER}")
-            )
-
-            os.makedirs(base_dir, exist_ok=True)
-
-            filename = (
-                f"{base_dir}/network_topology_graph_{random_hash}.pkl"
-                if random_hash
-                else f"{base_dir}/network_topology_graph.pkl"
-            )
-        else:
-            os.makedirs(os.path.dirname(filename), exist_ok=True)
-
-        with open(filename, "wb") as f:
-            data = {
-                "graph": self.graph,
-                "next_node_id": self.next_node_id,
-                "next_edge_id": self.next_edge_id,
-                "type_counters": self.type_counters,
-            }
-            pickle.dump(data, f)
-
-        logger.info(f"Network topology graph saved to {filename}.")
-
-    def load_graph(self, filename):
-        """Load the network topology graph and associated attributes from a pickle file."""
-        if not os.path.exists(filename):
-            raise FileNotFoundError(f"The file {filename} does not exist.")
-
-        with open(filename, "rb") as f:
-            data = pickle.load(f)
-
-            self.graph = data["graph"]
-            self.next_node_id = data["next_node_id"]
-            self.next_edge_id = data["next_edge_id"]
-            self.type_counters = data["type_counters"]
-
-        logger.info(f"Network topology graph loaded from {filename}.")

@@ -13,7 +13,7 @@ def extract_response_times(file_path):
     return response_times
 
 
-def plot_response_times(response_times, step=100000):
+def plot_response_times(response_times, step=4000):
     mean_response_times = [
         np.mean(response_times[i : i + step])
         for i in range(0, len(response_times), step)
@@ -53,7 +53,7 @@ def extract_rewards(file_path):
     }
 
 
-def plot_rewards(rewards, step=100000):
+def plot_rewards(rewards, step=4000):
     """
     Plot mean reward for each agent in steps, plus overall mean.
 
@@ -94,7 +94,7 @@ rewards = extract_rewards(file_path)
 plot_rewards(rewards)
 
 response_times = extract_response_times(file_path)
-filtered_response_times = [
-    response_time for response_time in response_times if response_time != 9999999.9
-]
-plot_response_times(filtered_response_times)
+print("Min response time: ", np.min(response_times))
+print("Mean response time: ", np.mean(response_times))
+print("Max response time: ", np.max(response_times))
+plot_response_times(response_times)

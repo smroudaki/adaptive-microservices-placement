@@ -3,19 +3,17 @@ import os
 from config import RAY_FOLDER
 from logger_setup import logger
 from network_topology.type import NetworkNodeType
-from ray import train, tune
-from ray.rllib.algorithms.ppo import PPOConfig
+from ray import air, tune
+from ray.rllib.algorithms.a3c import A3CConfig
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
+from ray.rllib.algorithms.impala import ImpalaConfig
+from ray.rllib.algorithms.ppo import PPOConfig
 
 
 class ResponseTimeCallback(DefaultCallbacks):
     def on_episode_end(self, worker, base_env, policies, episode, env_index, **kwargs):
         env = base_env.get_sub_environments()[env_index]
-        episode_response_time_history = [
-            val
-            for val in env._response_time_history[-env._max_steps :]
-            if val != 9999999.9
-        ]
+        episode_response_time_history = env._response_time_history[-env._max_steps :]
         average_episode_response_time_history = np.mean(episode_response_time_history)
         episode.custom_metrics["response_time"] = average_episode_response_time_history
 
@@ -40,7 +38,9 @@ class Trainer:
         """
         self.config = (
             PPOConfig()
-            .training(gamma=0.9)
+            # A3CConfig()
+            # ImpalaConfig()
+            .training(lr=0.0001, gamma=0.9)
             .environment(
                 env=self.env,
                 env_config=self.env_config,
@@ -70,9 +70,11 @@ class Trainer:
         """
         tuner = tune.Tuner(
             "PPO",
-            run_config=train.RunConfig(
-                storage_path=os.path.join(os.getcwd(), RAY_FOLDER),
-                checkpoint_config=train.CheckpointConfig(
+            # "A3C",
+            # "IMPALA",
+            run_config=air.RunConfig(
+                # storage_path=os.path.join(os.getcwd(), RAY_FOLDER),
+                checkpoint_config=air.CheckpointConfig(
                     checkpoint_frequency=5,
                     checkpoint_at_end=True,
                 ),
